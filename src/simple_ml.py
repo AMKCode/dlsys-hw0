@@ -1,6 +1,7 @@
 import struct
 import numpy as np
 import gzip
+import math
 try:
     from simple_ml_ext import *
 except:
@@ -20,7 +21,7 @@ def add(x, y):
         Sum of x + y
     """
     ### BEGIN YOUR CODE
-    pass
+    return x + y
     ### END YOUR CODE
 
 
@@ -48,7 +49,23 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
-    pass
+    input_dim = 28 * 28 # 784
+
+    with gzip.open(image_filename, 'rb') as f:
+        f.read(4) # skip magic number
+        number_of_imgs = struct.unpack(">i", f.read(4))[0]
+        f.read(8) # skip rows and columns
+        X = np.empty((number_of_imgs, input_dim), dtype=np.float32)
+        for i in range(number_of_imgs):
+            X[i] = np.array(struct.unpack(">" + str(input_dim) + "B", f.read(input_dim)), dtype=np.float32)
+    X = X / 255.0
+    
+    with gzip.open(label_filename, 'rb') as f:
+        f.read(4) # skip magic number
+        number_of_imgs = struct.unpack(">i", f.read(4))[0]
+        y = np.array(struct.unpack(">" + str(number_of_imgs) + "B", f.read(number_of_imgs)), dtype=np.uint8)
+    
+    return X, y
     ### END YOUR CODE
 
 
@@ -68,7 +85,7 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
-    pass
+    return np.mean(np.log(np.sum(np.exp(Z), axis=1)) - Z[np.arange(y.shape[0]), y])
     ### END YOUR CODE
 
 
@@ -91,7 +108,27 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    num_examples = y.shape[0]
+    num_batches = math.ceil(num_examples / batch)
+    num_classes = theta.shape[1]
+    for b in range(num_batches):
+        start_i = b * batch
+        if b == (num_batches - 1):
+            X_batch = X[start_i:]
+            y_batch = y[start_i:]
+            m = num_examples - (b * batch)
+        else:
+            X_batch = X[start_i: start_i + batch]
+            y_batch = y[start_i: start_i + batch]
+            m = batch
+        
+        X_theta = np.exp(X_batch @ theta)
+        norm_X_theta = np.linalg.norm(X_theta, axis=1).reshape((-1, 1))
+        Z = X_theta / norm_X_theta
+        Iy = np.zeros((m, num_classes))
+        Iy[np.arange(m), y_batch] = 1
+        delta = (1 / m) * (X_batch.T @ (Z - Iy))
+        theta -= lr * delta
     ### END YOUR CODE
 
 
